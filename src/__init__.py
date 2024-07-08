@@ -1,20 +1,24 @@
-""" Initialize the Flask app. """
-
 from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
+import os
 
+db = SQLAlchemy()
 cors = CORS()
 
-
-def create_app(config_class="src.config.DevelopmentConfig") -> Flask:
+def create_app(env=None) -> Flask:
     """
-    Create a Flask app with the given configuration class.
-    The default configuration class is DevelopmentConfig.
+    Create a Flask app with the given environment configuration.
     """
     app = Flask(__name__)
     app.url_map.strict_slashes = False
 
-    app.config.from_object(config_class)
+    if env:
+        app.config.from_object(env)
+    else:
+        app.config.from_object(os.environ.get('APP_SETTINGS', 'src.config.DevelopmentConfig'))
+
+    db.init_app(app)
 
     register_extensions(app)
     register_routes(app)
@@ -22,12 +26,10 @@ def create_app(config_class="src.config.DevelopmentConfig") -> Flask:
 
     return app
 
-
 def register_extensions(app: Flask) -> None:
     """Register the extensions for the Flask app"""
-    cors.init_app(app, resources={r"/api/*": {"origins": "*"}})
-    # Further extensions can be added here
-
+    db.init_app(app)
+    cors.init_app(app)
 
 def register_routes(app: Flask) -> None:
     """Import and register the routes for the Flask app"""
@@ -48,15 +50,12 @@ def register_routes(app: Flask) -> None:
     app.register_blueprint(reviews_bp)
     app.register_blueprint(amenities_bp)
 
-
 def register_handlers(app: Flask) -> None:
     """Register the error handlers for the Flask app."""
-    app.errorhandler(404)(lambda e: (
-        {"error": "Not found", "message": str(e)}, 404
-    )
-    )
-    app.errorhandler(400)(
-        lambda e: (
-            {"error": "Bad request", "message": str(e)}, 400
-        )
-    )
+    @app.errorhandler(404)
+    def page_not_found(error):
+        return {"error": "Not found", "message": str(error)}, 404
+
+    @app.errorhandler(400)
+    def bad_request(error):
+        return {"error": "Bad request", "message": str(error)}, 400

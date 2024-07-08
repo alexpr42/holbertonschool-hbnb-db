@@ -1,43 +1,36 @@
-"""
-  Now is easy to implement the database repository. The DBRepository
-  should implement the Repository (Storage) interface and the methods defined
-  in the abstract class Storage.
-
-  The methods to implement are:
-    - get_all
-    - get
-    - save
-    - update
-    - delete
-    - reload (which can be empty)
-"""
-
+from sqlalchemy.orm import sessionmaker
 from src.models.base import Base
-from src.persistence.repository import Repository
 
+Session = sessionmaker()
 
-class DBRepository(Repository):
-    """Dummy DB repository"""
+class DBRepository:
+    """Database Repository"""
 
-    def __init__(self) -> None:
-        """Not implemented"""
+    def __init__(self, db=None):
+        """Initialize with a SQLAlchemy database session"""
+        if db:
+            Session.configure(bind=db.engine)
+            self.session = Session()
 
-    def get_all(self, model_name: str) -> list:
-        """Not implemented"""
-        return []
+    def get_all(self, model_name):
+        """Get all objects of a given model"""
+        return self.session.query(model_name).all()
 
-    def get(self, model_name: str, obj_id: str) -> Base | None:
-        """Not implemented"""
+    def get(self, model_name, obj_id):
+        """Get an object by its ID"""
+        return self.session.query(model_name).filter_by(id=obj_id).first()
 
-    def reload(self) -> None:
-        """Not implemented"""
+    def save(self, obj):
+        """Save an object to the database"""
+        self.session.add(obj)
+        self.session.commit()
 
-    def save(self, obj: Base) -> None:
-        """Not implemented"""
+    def update(self, obj):
+        """Update an object in the database"""
+        self.session.commit()
+        return obj
 
-    def update(self, obj: Base) -> Base | None:
-        """Not implemented"""
-
-    def delete(self, obj: Base) -> bool:
-        """Not implemented"""
-        return False
+    def delete(self, obj):
+        """Delete an object from the database"""
+        self.session.delete(obj)
+        self.session.commit()
