@@ -1,16 +1,30 @@
-FROM python:3.12.3-slim
+# Dockerfile
 
+# Use the official lightweight Python image.
+FROM python:3.9-slim
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# Set working directory
 WORKDIR /app
 
-COPY requirements.txt /tmp/requirements.txt
+# Install system dependencies
+RUN apt-get update \
+    && apt-get install -y build-essential \
+    && apt-get install -y libpq-dev
 
-RUN pip install --no-cache-dir -r /tmp/requirements.txt \
-  && rm -rf /tmp
+# Install Python dependencies
+COPY requirements.txt /app/
+RUN pip install --upgrade pip
+RUN pip install -r requirements.txt
 
-COPY . .
+# Copy project
+COPY . /app/
 
-ENV PORT 5000
+# Expose port 5000 for the Flask app
+EXPOSE 5000
 
-EXPOSE $PORT
-
-CMD gunicorn hbnb:app -w 2 -b 0.0.0.0:$PORT
+# Run the Flask app with Gunicorn
+CMD ["gunicorn", "-b", "0.0.0.0:5000", "src:app"]

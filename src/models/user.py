@@ -1,11 +1,8 @@
-from src import db
-from werkzeug.security import generate_password_hash, check_password_hash
+from src import db, bcrypt
 
 class User(db.Model):
     id = db.Column(db.String(36), primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    first_name = db.Column(db.String(50), nullable=False)
-    last_name = db.Column(db.String(50), nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
@@ -14,12 +11,17 @@ class User(db.Model):
     def __repr__(self) -> str:
         return f"<User {self.id} ({self.email})>"
 
+    def set_password(self, password):
+        self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
+
+    def check_password(self, password):
+        return bcrypt.check_password_hash(self.password_hash, password)
+
     def to_dict(self) -> dict:
         return {
             "id": self.id,
             "email": self.email,
-            "first_name": self.first_name,
-            "last_name": self.last_name,
+            "is_admin": self.is_admin,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
         }
@@ -28,8 +30,7 @@ class User(db.Model):
     def create(user_data: dict) -> "User":
         new_user = User(
             email=user_data["email"],
-            first_name=user_data["first_name"],
-            last_name=user_data["last_name"]
+            is_admin=user_data.get("is_admin", False)
         )
         new_user.set_password(user_data["password"])
         db.session.add(new_user)
@@ -43,10 +44,10 @@ class User(db.Model):
     def update(self, data: dict) -> None:
         if "email" in data:
             self.email = data["email"]
-        if "first_name" in data:
-            self.first_name = data["first_name"]
-        if "last_name" in data:
-            self.last_name = data["last_name"]
+        if "password" in data:
+            self.set_password(data["password"])
+        if "is_admin" in data:
+            self.is_admin = data["is_admin"]
         db.session.commit()
 
     def delete(self) -> None:
@@ -56,9 +57,3 @@ class User(db.Model):
     @staticmethod
     def get_all() -> list["User"]:
         return User.query.all()
-
-    def set_password(self, password: str) -> None:
-        self.password_hash = generate_password_hash(password)
-
-    def check_password(self, password: str) -> bool:
-        return check_password_hash(self.password_hash, password)
